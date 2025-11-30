@@ -12,6 +12,10 @@ static const char *TAG = "bthome_scanner";
 // Callback function that gets called when a BTHome packet is received
 static void bthome_packet_callback(esp_bd_addr_t addr, int rssi, 
                                     const bthome_packet_t *packet, void *user_data) {
+    if (addr[0] != 0xf8 || addr[1] != 0x44 || addr[2] != 0x77 ||
+        addr[3] != 0x41 || addr[4] != 0xDD || addr[5] != 0x41) {
+        return;
+    }
     // Format MAC address
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -65,6 +69,12 @@ static void bthome_packet_callback(esp_bd_addr_t addr, int rssi,
                 break;
             case BTHOME_SENSOR_ILLUMINANCE:
                 ESP_LOGI(TAG, "    Illuminance: %.2f lux", value);
+                break;
+            case BTHOME_SENSOR_DISTANCE_MM:
+                ESP_LOGI(TAG, "    Distance: %.2f mm", value);
+                break;
+            case BTHOME_BINARY_VIBRATION:
+                ESP_LOGI(TAG, "    Vibration: %s", value ? "Detected" : "Not Detected");
                 break;
             default:
                 break;
