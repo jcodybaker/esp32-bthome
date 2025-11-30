@@ -240,6 +240,9 @@ void bthome_packet_init(bthome_packet_t *packet) {
     packet->measurement_count = 0;
     packet->event_count = 0;
     packet->has_packet_id = false;
+    packet->device_name = NULL;
+    packet->device_name_len = 0;
+    packet->use_complete_name = true;
 }
 
 void bthome_packet_free(bthome_packet_t *packet) {
@@ -264,6 +267,16 @@ void bthome_set_device_info(bthome_packet_t *packet, bool encrypted, bool trigge
 void bthome_set_packet_id(bthome_packet_t *packet, uint8_t packet_id) {
     packet->packet_id = packet_id;
     packet->has_packet_id = true;
+}
+
+int bthome_set_device_name(bthome_packet_t *packet, const char *name, size_t len, bool complete) {
+    if (len > 255) {
+        return -1;  // Name too long for BLE AD element
+    }
+    packet->device_name = name;
+    packet->device_name_len = len;
+    packet->use_complete_name = complete;
+    return 0;
 }
 
 // Add measurement helper
@@ -493,6 +506,15 @@ int bthome_encode_advertisement(const bthome_packet_t *packet, uint8_t *buffer,
         buffer[offset++] = 0x06;  // LE General Discoverable Mode, BR/EDR Not Supported
     }
     
+    // Add device name AD element if present
+    if (packet->device_name != NULL && packet->device_name_len > 0) {
+        if (offset + 2 + packet->device_name_len > buffer_size) return -1;
+        buffer[offset++] = packet->device_name_len + 1;  // Length (data + type byte)
+        buffer[offset++] = packet->use_complete_name ? 0x09 : 0x08;  // Complete or Shortened Local Name
+        memcpy(buffer + offset, packet->device_name, packet->device_name_len);
+        offset += packet->device_name_len;
+    }
+    
     // Encode service data
     if (offset + 2 > buffer_size) return -1;
     size_t service_data_len_offset = offset;
@@ -670,6 +692,7 @@ int bthome_decode(const uint8_t *data, size_t len, bthome_packet_t *packet) {
 
 int bthome_decode_advertisement(const uint8_t *data, size_t len, bthome_packet_t *packet) {
     size_t offset = 0;
+    bool found_service_data = false;
     
     while (offset < len) {
         if (offset + 2 > len) {
@@ -691,11 +714,24 @@ int bthome_decode_advertisement(const uint8_t *data, size_t len, bthome_packet_t
         // Look for Service Data - 16-bit UUID
         if (ad_type == 0x16) {
             int result = bthome_decode(data + offset, ad_len, packet);
-            return result;
+            if (result < 0) {
+                return result;
+            }
+            found_service_data = true;
+        }
+        // Look for Complete Local Name (0x09) or Shortened Local Name (0x08)
+        else if (ad_type == 0x09 || ad_type == 0x08) {
+            packet->device_name = (const char *)(data + offset);
+            packet->device_name_len = ad_len;
+            packet->use_complete_name = (ad_type == 0x09);
         }
         
         offset += ad_len;
     }
     
-    return -2;  // No BTHome service data found
+    if (!found_service_data) {
+        return -2;  // No BTHome service data found
+    }
+    
+    return 0;
 }

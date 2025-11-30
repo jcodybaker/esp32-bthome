@@ -387,6 +387,134 @@ void test_empty_packet(void) {
     bthome_packet_free(&decoded);
 }
 
+// Test device name (complete local name)
+void test_device_name_complete(void) {
+    bthome_packet_t packet;
+    bthome_packet_init(&packet);
+    bthome_set_device_info(&packet, false, false);
+    
+    const char *device_name = "DIY-sensor";
+    int result = bthome_set_device_name(&packet, device_name, strlen(device_name), true);
+    TEST_ASSERT_EQUAL_INT(0, result);
+    
+    bthome_add_sensor_sint16(&packet, BTHOME_SENSOR_TEMPERATURE, 2500);
+    bthome_add_sensor_uint16(&packet, BTHOME_SENSOR_HUMIDITY, 5055);
+    
+    uint8_t buffer[128];
+    int encoded_len = bthome_encode_advertisement(&packet, buffer, sizeof(buffer), true);
+    TEST_ASSERT_GREATER_THAN(0, encoded_len);
+    
+    bthome_packet_t decoded;
+    result = bthome_decode_advertisement(buffer, encoded_len, &decoded);
+    
+    TEST_ASSERT_EQUAL_INT(0, result);
+    TEST_ASSERT_NOT_NULL(decoded.device_name);
+    TEST_ASSERT_EQUAL_size_t(strlen(device_name), decoded.device_name_len);
+    TEST_ASSERT_EQUAL_MEMORY(device_name, decoded.device_name, decoded.device_name_len);
+    TEST_ASSERT_TRUE(decoded.use_complete_name);
+    
+    bthome_packet_free(&packet);
+    bthome_packet_free(&decoded);
+}
+
+// Test device name (shortened local name)
+void test_device_name_shortened(void) {
+    bthome_packet_t packet;
+    bthome_packet_init(&packet);
+    bthome_set_device_info(&packet, false, false);
+    
+    const char *device_name = "Sensor1";
+    int result = bthome_set_device_name(&packet, device_name, strlen(device_name), false);
+    TEST_ASSERT_EQUAL_INT(0, result);
+    
+    bthome_add_sensor_uint8(&packet, BTHOME_SENSOR_BATTERY, 85);
+    
+    uint8_t buffer[128];
+    int encoded_len = bthome_encode_advertisement(&packet, buffer, sizeof(buffer), true);
+    TEST_ASSERT_GREATER_THAN(0, encoded_len);
+    
+    bthome_packet_t decoded;
+    result = bthome_decode_advertisement(buffer, encoded_len, &decoded);
+    
+    TEST_ASSERT_EQUAL_INT(0, result);
+    TEST_ASSERT_NOT_NULL(decoded.device_name);
+    TEST_ASSERT_EQUAL_size_t(strlen(device_name), decoded.device_name_len);
+    TEST_ASSERT_EQUAL_MEMORY(device_name, decoded.device_name, decoded.device_name_len);
+    TEST_ASSERT_FALSE(decoded.use_complete_name);
+    
+    bthome_packet_free(&packet);
+    bthome_packet_free(&decoded);
+}
+
+// Test device name with UTF-8 characters
+void test_device_name_utf8(void) {
+    bthome_packet_t packet;
+    bthome_packet_init(&packet);
+    bthome_set_device_info(&packet, false, false);
+    
+    // UTF-8 encoded string: "Temp™"
+    const char *device_name = "Temp\xE2\x84\xA2";
+    size_t name_len = strlen(device_name);
+    
+    int result = bthome_set_device_name(&packet, device_name, name_len, true);
+    TEST_ASSERT_EQUAL_INT(0, result);
+    
+    bthome_add_sensor_sint16(&packet, BTHOME_SENSOR_TEMPERATURE, 2100);
+    
+    uint8_t buffer[128];
+    int encoded_len = bthome_encode_advertisement(&packet, buffer, sizeof(buffer), true);
+    TEST_ASSERT_GREATER_THAN(0, encoded_len);
+    
+    bthome_packet_t decoded;
+    result = bthome_decode_advertisement(buffer, encoded_len, &decoded);
+    
+    TEST_ASSERT_EQUAL_INT(0, result);
+    TEST_ASSERT_NOT_NULL(decoded.device_name);
+    TEST_ASSERT_EQUAL_size_t(name_len, decoded.device_name_len);
+    TEST_ASSERT_EQUAL_MEMORY(device_name, decoded.device_name, decoded.device_name_len);
+    
+    bthome_packet_free(&packet);
+    bthome_packet_free(&decoded);
+}
+
+// Test advertisement without device name
+void test_no_device_name(void) {
+    bthome_packet_t packet;
+    bthome_packet_init(&packet);
+    bthome_set_device_info(&packet, false, false);
+    
+    bthome_add_sensor_uint8(&packet, BTHOME_SENSOR_BATTERY, 75);
+    
+    uint8_t buffer[128];
+    int encoded_len = bthome_encode_advertisement(&packet, buffer, sizeof(buffer), true);
+    TEST_ASSERT_GREATER_THAN(0, encoded_len);
+    
+    bthome_packet_t decoded;
+    int result = bthome_decode_advertisement(buffer, encoded_len, &decoded);
+    
+    TEST_ASSERT_EQUAL_INT(0, result);
+    TEST_ASSERT_NULL(decoded.device_name);
+    TEST_ASSERT_EQUAL_size_t(0, decoded.device_name_len);
+    
+    bthome_packet_free(&packet);
+    bthome_packet_free(&decoded);
+}
+
+// Test device name too long (>255 bytes)
+void test_device_name_too_long(void) {
+    bthome_packet_t packet;
+    bthome_packet_init(&packet);
+    bthome_set_device_info(&packet, false, false);
+    
+    char long_name[300];
+    memset(long_name, 'A', sizeof(long_name));
+    
+    int result = bthome_set_device_name(&packet, long_name, sizeof(long_name), true);
+    TEST_ASSERT_EQUAL_INT(-1, result);  // Should fail with name too long error
+    
+    bthome_packet_free(&packet);
+}
+
 // Test case group for running all tests together
 TEST_CASE("BTHome: All tests", "[bthome]") {
     printf("=== Running BTHome tests ===\n");
@@ -418,6 +546,16 @@ TEST_CASE("BTHome: All tests", "[bthome]") {
     test_invalid_uuid();
     printf("Test: empty packet\n");
     test_empty_packet();
+    printf("Test: device name complete\n");
+    test_device_name_complete();
+    printf("Test: device name shortened\n");
+    test_device_name_shortened();
+    printf("Test: device name UTF-8\n");
+    test_device_name_utf8();
+    printf("Test: no device name\n");
+    test_no_device_name();
+    printf("Test: device name too long\n");
+    test_device_name_too_long();
     printf("=== All BTHome tests completed ===\n");
 }
 
@@ -477,4 +615,24 @@ TEST_CASE("BTHome: invalid uuid", "[bthome]") {
 
 TEST_CASE("BTHome: empty packet", "[bthome]") {
     test_empty_packet();
+}
+
+TEST_CASE("BTHome: device name complete", "[bthome]") {
+    test_device_name_complete();
+}
+
+TEST_CASE("BTHome: device name shortened", "[bthome]") {
+    test_device_name_shortened();
+}
+
+TEST_CASE("BTHome: device name UTF-8", "[bthome]") {
+    test_device_name_utf8();
+}
+
+TEST_CASE("BTHome: no device name", "[bthome]") {
+    test_no_device_name();
+}
+
+TEST_CASE("BTHome: device name too long", "[bthome]") {
+    test_device_name_too_long();
 }

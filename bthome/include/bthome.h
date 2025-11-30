@@ -205,6 +205,9 @@ typedef struct {
     size_t event_count;
     uint8_t packet_id;
     bool has_packet_id;
+    const char *device_name;
+    size_t device_name_len;
+    bool use_complete_name;  // true = 0x09 (complete), false = 0x08 (shortened)
 } bthome_packet_t;
 
 // Encoder functions
@@ -288,6 +291,16 @@ int bthome_add_dimmer_event(bthome_packet_t *packet, bthome_dimmer_event_t event
  * Set packet ID
  */
 void bthome_set_packet_id(bthome_packet_t *packet, uint8_t packet_id);
+
+/**
+ * Set device name (local name)
+ * @param packet The packet to set the name on
+ * @param name The device name (UTF-8 encoded string)
+ * @param len Length of the name (max 255 bytes)
+ * @param complete true for Complete Local Name (0x09), false for Shortened Local Name (0x08)
+ * @return 0 on success, negative error code on failure
+ */
+int bthome_set_device_name(bthome_packet_t *packet, const char *name, size_t len, bool complete);
 
 /**
  * Encode a BTHome packet into service data payload

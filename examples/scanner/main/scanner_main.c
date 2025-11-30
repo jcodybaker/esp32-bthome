@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -17,6 +18,20 @@ static void bthome_packet_callback(esp_bd_addr_t addr, int rssi,
              addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
     
     ESP_LOGI(TAG, "BTHome packet from %s (RSSI: %d dBm)", mac_str, rssi);
+    
+    // Print device name if present
+    if (packet->device_name != NULL && packet->device_name_len > 0) {
+        // Create a temporary buffer to null-terminate the name for printing
+        char name_buffer[256];
+        size_t copy_len = packet->device_name_len < sizeof(name_buffer) - 1 ? 
+                         packet->device_name_len : sizeof(name_buffer) - 1;
+        memcpy(name_buffer, packet->device_name, copy_len);
+        name_buffer[copy_len] = '\0';
+        
+        ESP_LOGI(TAG, "  Device Name: \"%s\" (%s)", name_buffer, 
+                 packet->use_complete_name ? "Complete" : "Shortened");
+    }
+    
     ESP_LOGI(TAG, "  Version: %d, Encrypted: %d, Trigger-based: %d",
              packet->device_info.version,
              packet->device_info.encrypted,
