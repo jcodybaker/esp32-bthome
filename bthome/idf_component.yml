@@ -1,0 +1,3 @@
+version: "0.0.1"
+description: "BTHome v2 component for sending/receiving bthome v2 bluetooth messages."
+url: "https://github.com/jcodybaker/esp32-bthome"
