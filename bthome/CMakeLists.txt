@@ -1,2 +1,3 @@
-idf_component_register(SRCS "bthome.c"
-                    INCLUDE_DIRS "include")
+idf_component_register(SRCS "bthome.c" "bthome_ble.c"
+                    INCLUDE_DIRS "include"
+                    REQUIRES bt)
