@@ -1,6 +1,9 @@
 # BTHome ESP IDF Implementation
 
-A C library for encoding and decoding BTHome protocol advertisements on ESP32 devices. BTHome is a BLE advertising format for broadcasting sensor data from IoT devices.
+A C library for encoding and decoding BTHome protocol advertisements on ESP32 devices. [BTHome](https://bthome.io) is a BLE advertising format for broadcasting sensor data from IoT devices.
+
+## Note
+This code was partially built with Claude.ai. I have reviewed the code and verified it works, but it comes without warranty.
 
 ## Usage
 
