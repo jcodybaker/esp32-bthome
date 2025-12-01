@@ -134,6 +134,7 @@ static const float scaling_factors[] = {
     [0x5F] = 0.1f,    // precipitation
 };
 
+
 // Helper functions
 
 static uint16_t read_uint16_le(const uint8_t *data) {
@@ -204,6 +205,27 @@ float bthome_get_scaling_factor(uint8_t object_id) {
         return factor == 0.0f ? 1.0f : factor;
     }
     return 1.0f;
+}
+
+const char* bthome_get_object_name(uint8_t object_id) {
+    if (object_id < sizeof(object_names) / sizeof(object_names[0])) {
+        return object_names[object_id];
+    }
+    return NULL;
+}
+
+const char* bthome_get_object_unit(uint8_t object_id) {
+    if (object_id < sizeof(object_units) / sizeof(object_units[0])) {
+        return object_units[object_id];
+    }
+    return NULL;
+}
+
+const char* bthome_get_object_unit_description(uint8_t object_id) {
+    if (object_id < sizeof(object_unit_descriptions) / sizeof(object_unit_descriptions[0])) {
+        return object_unit_descriptions[object_id];
+    }
+    return NULL;
 }
 
 float bthome_get_scaled_value(const bthome_measurement_t *measurement, float factor) {
