@@ -460,10 +460,21 @@ void bthome_packet_init(bthome_packet_t *packet) {
     packet->device_name = NULL;
     packet->device_name_len = 0;
     packet->use_complete_name = true;
+    packet->owns_data = false;
 }
 
 void bthome_packet_free(bthome_packet_t *packet) {
     if (packet->measurements) {
+        // Free any dynamically allocated data in measurements (only if packet owns the data)
+        if (packet->owns_data) {
+            for (size_t i = 0; i < packet->measurement_count; i++) {
+                bthome_measurement_t *m = &packet->measurements[i];
+                if (m->size == 0 && m->value.bytes_val.data != NULL) {
+                    // Free copied text/raw data
+                    free((void*)m->value.bytes_val.data);
+                }
+            }
+        }
         free(packet->measurements);
         packet->measurements = NULL;
     }
@@ -471,8 +482,78 @@ void bthome_packet_free(bthome_packet_t *packet) {
         free(packet->events);
         packet->events = NULL;
     }
+    if (packet->owns_data && packet->device_name != NULL) {
+        // Free copied device name (only if packet owns the data)
+        free((void*)packet->device_name);
+        packet->device_name = NULL;
+    }
     packet->measurement_count = 0;
     packet->event_count = 0;
+    packet->device_name_len = 0;
+    packet->owns_data = false;
+}
+
+int bthome_packet_copy(bthome_packet_t *dest, const bthome_packet_t *src) {
+    // Initialize destination
+    bthome_packet_init(dest);
+    
+    // Copy simple fields
+    dest->device_info = src->device_info;
+    dest->packet_id = src->packet_id;
+    dest->has_packet_id = src->has_packet_id;
+    dest->use_complete_name = src->use_complete_name;
+    dest->owns_data = true;  // Destination owns all copied data
+    
+    // Copy device name if present
+    if (src->device_name != NULL && src->device_name_len > 0) {
+        char *name_copy = malloc(src->device_name_len);
+        if (!name_copy) {
+            return -1;  // Out of memory
+        }
+        memcpy(name_copy, src->device_name, src->device_name_len);
+        dest->device_name = name_copy;
+        dest->device_name_len = src->device_name_len;
+    }
+    
+    // Copy measurements
+    if (src->measurement_count > 0) {
+        dest->measurements = malloc(src->measurement_count * sizeof(bthome_measurement_t));
+        if (!dest->measurements) {
+            bthome_packet_free(dest);
+            return -1;  // Out of memory
+        }
+        
+        for (size_t i = 0; i < src->measurement_count; i++) {
+            dest->measurements[i] = src->measurements[i];
+            
+            // Deep copy variable-length data (text, raw)
+            if (src->measurements[i].size == 0 && src->measurements[i].value.bytes_val.len > 0) {
+                uint8_t *data_copy = malloc(src->measurements[i].value.bytes_val.len);
+                if (!data_copy) {
+                    dest->measurement_count = i;  // Set count for proper cleanup
+                    bthome_packet_free(dest);
+                    return -1;  // Out of memory
+                }
+                memcpy(data_copy, src->measurements[i].value.bytes_val.data, 
+                       src->measurements[i].value.bytes_val.len);
+                dest->measurements[i].value.bytes_val.data = data_copy;
+            }
+        }
+        dest->measurement_count = src->measurement_count;
+    }
+    
+    // Copy events
+    if (src->event_count > 0) {
+        dest->events = malloc(src->event_count * sizeof(bthome_event_t));
+        if (!dest->events) {
+            bthome_packet_free(dest);
+            return -1;  // Out of memory
+        }
+        memcpy(dest->events, src->events, src->event_count * sizeof(bthome_event_t));
+        dest->event_count = src->event_count;
+    }
+    
+    return 0;
 }
 
 void bthome_set_device_info(bthome_packet_t *packet, bool encrypted, bool trigger_based) {

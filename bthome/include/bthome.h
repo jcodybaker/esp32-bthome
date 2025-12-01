@@ -208,6 +208,7 @@ typedef struct {
     const char *device_name;
     size_t device_name_len;
     bool use_complete_name;  // true = 0x09 (complete), false = 0x08 (shortened)
+    bool owns_data;  // true if packet owns and should free device_name and text/raw data buffers
 } bthome_packet_t;
 
 // Encoder functions
@@ -221,6 +222,16 @@ void bthome_packet_init(bthome_packet_t *packet);
  * Free resources allocated for a BTHome packet
  */
 void bthome_packet_free(bthome_packet_t *packet);
+
+/**
+ * Deep copy a BTHome packet
+ * Allocates new memory for all dynamic data (measurements, events, device name, text/raw data)
+ * so the copy remains valid even after the source packet is freed
+ * @param dest Destination packet (must be initialized)
+ * @param src Source packet to copy from
+ * @return 0 on success, negative error code on failure (out of memory)
+ */
+int bthome_packet_copy(bthome_packet_t *dest, const bthome_packet_t *src);
 
 /**
  * Set device information in packet
