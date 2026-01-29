@@ -113,6 +113,7 @@ static const float scaling_factors[] = {
     [0x0C] = 0.001f,  // voltage
     [0x14] = 0.01f,   // moisture
     [0x3F] = 0.1f,    // rotation
+    [0x41] = 0.1f,    // distance (m)
     [0x42] = 0.001f,  // duration
     [0x43] = 0.001f,  // current
     [0x44] = 0.01f,   // speed
