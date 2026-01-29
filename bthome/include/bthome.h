@@ -81,6 +81,8 @@ typedef enum {
     BTHOME_SENSOR_PRECIPITATION = 0x5F,
     BTHOME_SENSOR_CHANNEL = 0x60,
     BTHOME_SENSOR_ROTATIONAL_SPEED = 0x61,
+    BTHOME_SENSOR_SPEED_SIGNED = 0x62,
+    BTHOME_SENSOR_ACCELERATION_SIGNED = 0x63
 } bthome_sensor_id_t;
 
 // Object IDs for binary sensor data
