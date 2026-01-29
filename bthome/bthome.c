@@ -92,6 +92,8 @@ static const uint8_t object_sizes[] = {
     [0x5F] = 2,   // precipitation
     [0x60] = 1,   // channel
     [0x61] = 2,   // rotational speed
+    [0x62] = 4,   // speed (signed)
+    [0x63] = 4,   // acceleration (signed)
     [0xF0] = 2,   // device type id
     [0xF1] = 4,   // firmware version (uint32)
     [0xF2] = 3,   // firmware version (uint24)
@@ -132,6 +134,8 @@ static const float scaling_factors[] = {
     [0x5D] = 0.001f,  // current (sint16)
     [0x5E] = 0.01f,   // direction
     [0x5F] = 0.1f,    // precipitation
+    [0x62] = 0.000001f,   // speed (signed)
+    [0x63] = 0.000001f,   // acceleration (signed)
 };
 
 
@@ -224,6 +228,8 @@ static const char* object_names[] = {
     [0x5F] = "precipitation",
     [0x60] = "channel",
     [0x61] = "rotational_speed",
+    [0x62] = "speed",
+    [0x63] = "acceleration",
     [0xF0] = "device_type_id",
     [0xF1] = "firmware_version",
     [0xF2] = "firmware_version",
@@ -277,6 +283,8 @@ static const char* object_units[] = {
     [0x5E] = "°",
     [0x5F] = "mm",
     [0x61] = "rpm",
+    [0x62] = "m/s",
+    [0x63] = "m/s²",
 };
 
 
@@ -328,6 +336,8 @@ static const char* object_unit_descriptions[] = {
     [0x5E] = "degrees",
     [0x5F] = "millimeter",
     [0x61] = "revolutions per minute",
+    [0x62] = "meter per second",
+    [0x63] = "meter per second squared",
 };
 
 // Helper functions
